@@ -102,13 +102,21 @@ resource "aws_instance" "grafana_prometheus_instance" {
 
   # SSH Key pair
   key_name = var.ssh_key_name
-
-  user_data = file("./scripts/grafana-prometheus-prov.sh")
+ 
   # Name the resource
   tags = {
     Name = var.instance_name
   }
 
+  user_data = templatefile("./scripts/grafana-prometheus-dashboards-prov.sh",
+    { 
+      PROMETHEUS_DATASOURCE_YML = file("../configurations/grafana/datasource/prometheus.yml"),
+      PROMETHEUS_DASHBOARD_YML = file("../configurations/grafana/dashboards/dashboard.yml"),
+      PROMETHEUS_CONFIG_YML = file("../configurations/prometheus/prometheus-config.yml"),
+      PROMETHEUS_SERVICE_FILE = file("../configurations/prometheus/prometheus-service"),
+      NODE_EXPORTER_SERVICE_FILE = file("../configurations/node_exporter/node-exporter-service"),
+     }
+  )
 }
 
 

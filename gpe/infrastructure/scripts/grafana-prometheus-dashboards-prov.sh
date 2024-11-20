@@ -38,19 +38,26 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install grafana -y
 # Provision Grafana with Prometheus data source
 echo "Provisioning Grafana with Prometheus data source..."
 cat <<EOF > /etc/grafana/provisioning/datasources/prometheus.yml
----
-apiVersion: 1
-datasources:
-  # Prometheus data source
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    orgId: 1
-    uid: prometheus_uid
-    url: http://localhost:9090
-    isDefault: true
-    editable: true
+${PROMETHEUS_DATASOURCE_YML}
 EOF
+
+# DASHBOARD
+
+# Configure Prometheus dashboard
+echo "Provisioning Grafana dashboard..."
+cat <<EOF > /etc/grafana/provisioning/dashboards/dashboard.yml
+${PROMETHEUS_DASHBOARD_YML}
+EOF
+
+echo "Creating the dashboards folder" 
+mkdir /var/lib/grafana/dashboards
+
+echo "Creating dashboard..."
+curl "https://raw.githubusercontent.com/shonifari/grafana/refs/heads/main/dashboards/key-metrics-dbd.json" -o /var/lib/grafana/dashboards/dashboard.json
+
+
+
+
 
 # Reload systemd daemon to recognize new service
 echo "Reloading systemd daemon..."
@@ -93,7 +100,7 @@ sudo chown $USER:$USER $DATA_DIR $CONFIG_DIR
 
 # Download and extract Prometheus
 echo "Downloading Prometheus..."
-wget https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz -O /tmp/prometheus.tar.gz
+wget https://github.com/prometheus/prometheus/releases/download/v$PROMETHEUS_VERSION/prometheus-$PROMETHEUS_VERSION.linux-amd64.tar.gz -O /tmp/prometheus.tar.gz
 if [ $? -ne 0 ]; then
   echo "Failed to download Prometheus. Please check the version or network connectivity."
   exit 1
@@ -106,7 +113,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Correct folder name
-EXTRACTED_FOLDER="/tmp/prometheus-${PROMETHEUS_VERSION}.linux-amd64"
+EXTRACTED_FOLDER="/tmp/prometheus-$PROMETHEUS_VERSION.linux-amd64"
 if [ ! -d "$EXTRACTED_FOLDER" ]; then
   echo "Extracted folder $EXTRACTED_FOLDER not found. Exiting."
   exit 1
@@ -133,39 +140,14 @@ fi
 # Create Prometheus configuration file
 echo "Creating Prometheus configuration file..."
 cat <<EOF | sudo tee $CONFIG_DIR/prometheus.yml > /dev/null
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-  - job_name: 'node_exporter'
-    static_configs:
-      - targets: ['localhost:9100']
+${PROMETHEUS_CONFIG_YML}
 EOF
 sudo chown $USER:$USER $CONFIG_DIR/prometheus.yml
 
 # Create systemd service file
 echo "Creating Prometheus service..."
 cat <<EOF | sudo tee $SERVICE_FILE
-[Unit]
-Description=Prometheus Monitoring System
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-User=$USER
-Group=$USER
-Type=simple
-ExecStart=$INSTALL_DIR/prometheus \\
-  --config.file=$CONFIG_DIR/prometheus.yml \\
-  --storage.tsdb.path=$DATA_DIR \\
-  --web.console.templates=$CONFIG_DIR/consoles \\
-  --web.console.libraries=$CONFIG_DIR/console_libraries
-
-[Install]
-WantedBy=multi-user.target
+${PROMETHEUS_SERVICE_FILE}
 EOF
 
 # Reload systemd and start Prometheus
@@ -207,17 +189,7 @@ cd
 # Create a systemd service file for node_exporter
 echo "Creating systemd service file for node_exporter..."
 sudo tee /etc/systemd/system/node_exporter.service <<EOF
-[Unit]
-Description=Node Exporter
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-User=prometheus
-ExecStart=/usr/local/bin/node_exporter
-
-[Install]
-WantedBy=default.target
+${NODE_EXPORTER_SERVICE_FILE}
 EOF
 
 # Reload systemd to recognize the new service
