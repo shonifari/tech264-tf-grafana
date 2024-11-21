@@ -35,22 +35,7 @@ sudo apt-get update -y
 echo "Installing Grafana..."
 sudo DEBIAN_FRONTEND=noninteractive apt-get install grafana -y
 
-# Provision Grafana with Prometheus data source
-echo "Provisioning Grafana with Prometheus data source..."
-cat <<EOF > /etc/grafana/provisioning/datasources/prometheus.yml
----
-apiVersion: 1
-datasources:
-  # Prometheus data source
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    orgId: 1
-    uid: prometheus_uid
-    url: http://localhost:9090
-    isDefault: true
-    editable: true
-EOF
+# **PROVISION DATASOURCES HERE**
 
 # Reload systemd daemon to recognize new service
 echo "Reloading systemd daemon..."
@@ -66,5 +51,3 @@ sudo systemctl enable grafana-server.service
 
 # Echo statement to indicate the end of the script
 echo "Grafana setup and provisioning complete."
-
-

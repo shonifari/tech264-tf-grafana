@@ -79,7 +79,7 @@ resource "aws_instance" "grafana_instance" {
   # SSH Key pair
   key_name = var.ssh_key_name
 
-    # user_data="${file("../grafana-prov.sh")}"
+  user_data="${file("../grafana-prov.sh")}"
   
   # Name the resource
   tags = {
